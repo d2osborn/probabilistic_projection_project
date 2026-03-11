@@ -44,5 +44,4 @@ for yr in range(2018, 2026):
         df_list.append(yearly_df)
     else:
         failed_years.append(yr)
-    time.sleep(2) 
-
+    time.sleep(2)
