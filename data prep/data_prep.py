@@ -15,7 +15,7 @@ warnings.filterwarnings('ignore')
 
 def load_data_prep():
     # all of the statcast regular season data from 2018-2025 (~1 min)
-    data = dd.read_parquet('data/statcast_years/*.parquet')
+    data = dd.read_parquet('../data/statcast_years/*.parquet')
     statcast_data = data.query('game_type == "R"').reset_index(drop=True)
     statcast_dask_data = statcast_data.compute()
 
@@ -163,14 +163,14 @@ def load_data_prep():
     batted_ball_events['is_HR'] = (batted_ball_events['events'] == 'home_run').astype(int)
 
     ## filters it to only look at the batted balls that have an id in player_primary_pos --> excludes pitcher batted balls, etc.
-    batted_ball_events = batted_ball_events[batted_ball_events['batter'].isin(list(player_primary_pos['batter'].unique()))].reset_index(drop=True).copy()
+    batted_ball_events = (batted_ball_events[batted_ball_events['batter'].isin(list(player_primary_pos['batter'].unique()))]
+                          .reset_index(drop=True)
+                          .copy()
+                          )
 
     # downloading as parquets so that I can read them in faster
-    # batted_ball_events.to_parquet('data/batted_ball_events.parquet', index=False)
-    # player_primary_pos.to_parquet('data/player_primary_pos.parquet', index=False)
-    batted_ball_events.to_parquet('demo_run_bbe.parquet', index=False)
-    player_primary_pos.to_parquet('primary_pos.parquet', index=False)
-
+    batted_ball_events.to_parquet('../data/batted_ball_events.parquet', index=False)
+    player_primary_pos.to_parquet('../data/player_primary_pos.parquet', index=False)
 
 if __name__ == "__main__":
     load_data_prep()

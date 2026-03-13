@@ -25,7 +25,7 @@ def safe_load(year, retries=5):
     """
     start_date = f'{year}-03-01'
     end_date = f'{year}-11-10'
-    filename = f'files/statcast_{year}.parquet'
+    filename = f'../data/statcast_years/statcast_{year}.parquet'
     for i in range(retries):
         try:
             print(f"Loading {year}, attempt {i+1}/{retries}")
@@ -35,14 +35,14 @@ def safe_load(year, retries=5):
             time.sleep(5)
     return None
 
-os.makedirs('files', exist_ok=True)
-
-df_list = []
-failed_years = []
-for yr in range(2018, 2026): 
-    yearly_df = safe_load(yr)
-    if yearly_df is not None:
-        df_list.append(yearly_df)
-    else:
-        failed_years.append(yr)
-    time.sleep(2)
+if __name__ == "__main__":
+    os.makedirs('../data/statcast_years', exist_ok=True)
+    df_list = []
+    failed_years = []
+    for yr in range(2018, 2026): 
+        yearly_df = safe_load(yr)
+        if yearly_df is not None:
+            df_list.append(yearly_df)
+        else:
+            failed_years.append(yr)
+        time.sleep(2)
