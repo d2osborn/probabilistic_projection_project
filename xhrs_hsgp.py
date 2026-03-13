@@ -73,7 +73,7 @@ def hsgp_model_run():
             f_centered = hsgp_matern(X, alpha=amplitude, length=length, ell=self.L, m=self.m, nu=2.5) ## nu = 2.5 makes it matern 5/2 kernel
             f = numpyro.deterministic("f_star", f_centered + log_odds_baseline) ## we're setting the m(x) at -3 (in log odds) ≈ 0.0474 HR%
             site = "y" if y is not None else "y_test"
-            numpyro.sample(site, dist.Bernoulli(logits=f), obs=y) ## Y ~ Bernoulli(theta), theta = logit(*)
+            numpyro.sample(site, dist.Bernoulli(logits=f), obs=y) ## our likelihood function
 
         def tree_flatten(self):
                 children = ()  
