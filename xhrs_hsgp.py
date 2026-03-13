@@ -1,5 +1,6 @@
 """
-The HSGP implementation of modeling xHRs with Exit Velocity (EV) and Launch Angle (LA) in NumpyRo and using the Matern 5/2 Kernel function
+The HSGP implementation of modeling xHRs with Exit Velocity (EV) and Launch Angle (LA) and using the Matern 5/2 Kernel function
+Implemented in NumPyro and ran the model using Stochastic Variational Inference (SVI)
 """
 
 import pandas as pd
