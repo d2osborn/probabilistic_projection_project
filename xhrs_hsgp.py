@@ -94,7 +94,7 @@ def hsgp_model_run():
 
     batted_ball_events['xHR'] = jnp.array(mean_probs_new) ## xHRs is just the probability that the batted ball was a HR!
 
-    batted_ball_events.to_parquet('data/batted_balls_w_xhrs.parquet') ## adds the 
+    batted_ball_events.to_parquet('data/batted_balls_w_xhrs.parquet') ## adds the xHR probability to the batted ball data from 2018-2025
 
 if __name__ == "__main__":
     hsgp_model_run()
