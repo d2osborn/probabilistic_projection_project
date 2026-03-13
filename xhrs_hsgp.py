@@ -1,3 +1,7 @@
+"""
+The HSGP implementation of modeling xHRs with Exit Velocity (EV) and Launch Angle (LA) in NumpyRo and using the Matern 5/2 Kernel function
+"""
+
 import pandas as pd
 import numpy as np
 
