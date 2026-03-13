@@ -1,6 +1,7 @@
 """
 Creates a function that fetches Statcast data to use for analysis
 """
+
 import os
 import pandas as pd
 import time
