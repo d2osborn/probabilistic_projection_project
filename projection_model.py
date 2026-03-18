@@ -171,7 +171,6 @@ def posterior_plots(idata, train_df, posterior_samples, hold_out_df, hold_out_di
     num_players = len(sample_names)
     dynamic_height = max(5, num_players * 0.15)
 
-    ## the forest plot
     fig, ax = plt.subplots(figsize=(8, dynamic_height))
     axes = az.plot_forest(pred_idata.posterior_predictive, var_names=["HR_proj"], combined=True, colors=blue_color, hdi_prob=0.95, ax=ax)
     axes[0].set_title("Posterior Predictive HR Intervals (95% HDI)")
