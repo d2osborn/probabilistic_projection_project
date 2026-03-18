@@ -152,6 +152,7 @@ def posterior_plots(idata, train_df, posterior_samples, hold_out_df, hold_out_di
         player_sims = Y_pred_samples[:, i]
         flattened_data.append({'name': row['name'].title(),
                                'team': row['team'],
+                               'age': row['Age'],
                                'position': row['primary_pos'],
                                'projected_pa': row['PA'],
                                'projected_events': row['events'],

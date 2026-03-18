@@ -91,7 +91,8 @@ if page == "Distributions":
         for i, player in enumerate(selected_players):
             with cols[i]:
                 p_data = df[df['name'] == player].iloc[0]
-                st.info(f"**{p_data['name']}** ({p_data['position']} - {p_data['team']})")
+                # Updated info box to include Age!
+                st.info(f"**{p_data['name']}** (Age: {p_data['age']} | {p_data['position']} - {p_data['team']})")
                 
                 # Dynamic text generation based on the shape of the distribution
                 spread = p_data['hdi_upper'] - p_data['hdi_lower']
@@ -106,8 +107,8 @@ if page == "Distributions":
 elif page == "Leaderboard":
     st.title("2026 Projected HR Leaderboard")
     
-    # Formatting the dataframe for a clean UI
-    display_df = df[['name', 'team', 'position', 'mean_hr', 'hdi_lower', 'hdi_upper', 'projected_pa']].copy()
+    # Formatting the dataframe for a clean UI - Now including Age!
+    display_df = df[['name', 'age', 'team', 'position', 'mean_hr', 'hdi_lower', 'hdi_upper', 'projected_pa']].copy()
     display_df = display_df.sort_values(by='mean_hr', ascending=False).reset_index(drop=True)
     display_df.index += 1 # Make index 1-based
     
@@ -115,6 +116,7 @@ elif page == "Leaderboard":
         display_df,
         column_config={
             "name": "Player",
+            "age": st.column_config.NumberColumn("Age", format="%d"), # Ensures no weird commas like "2,024"
             "team": "Team",
             "position": "Pos",
             "mean_hr": st.column_config.ProgressColumn("Projected HRs", format="%.1f", min_value=0, max_value=60),
