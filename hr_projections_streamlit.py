@@ -329,7 +329,7 @@ elif page == "Methodology":
 
     We instead opt into a *Hilbert Space* Gaussian Process (HSGP), which reduces this computational cost substantially, $\mathcal{O}(mN + m)$[^3], by projecting the GP onto a set of basis functions (Orduz, 2024). Given that HSGPs are restricted to stationary covariance kernels, we selected the Matérn 5/2 kernel as our covariance function (Engels and Andorra, 2024)[^4]. We combine the HSGP model with Stochastic Variational Inference (SVI) for posterior estimation (Orduz, 2025). This approach yields approximate rather than exact posterior estimates, a tradeoff we accept in favor of scalability.
 
-    Our outcome of interest for a given player $i$ in a given season $j$ is their HR total $Y_{ij}$, which we model as a binomial process, however, with a few distinctions from Jensen's (Jensen et al., 2009). We model $Y_{ij}$ as:
+    Our outcome of interest for a given player $i$ in a given season $j$ is their HR total $Y_{ij}$, which we model as a binomial process, however, with a few distinctions from Jensen's framework (Jensen et al., 2009). We model $Y_{ij}$ as:
 
     $Y_{ij} \sim \text{Binomial}(N_{ij}, \theta_{ij}\times (\frac{BF_{ij} + 1.00}{2})),$
 
