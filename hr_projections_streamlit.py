@@ -361,7 +361,7 @@ elif page == "Methodology":
 
     The Dirichlet prior places the most weight on the most recent season with the concentration parameters of (1, 3, 6), implying that season $j-1$ *should* carry approximately 60% of the total weight on average.[^7] 
 
-    And we continue with Jensen's implementation by using a cubic B-spline to model $f_k(A_{ij})$ (Jensen, 2009). This allows $A_{ij}$ to be modeled flexibly for each position $k$. We make ours a little more flexible by using six B-spline basis functions per position, totaling 54 parameters (versus Jensen's 36), where each B-spline basis function, $\gamma_k$, is modeled as:
+    And we continue with Jensen's implementation by using a cubic B-spline to model $f_k(A_{ij})$ (Jensen, 2009). This allows $A_{ij}$ to be modeled flexibly for each position $k$. We make ours a little more flexible by using six B-spline basis functions per position, totaling 54 parameters (versus Jensen's 36), where each B-spline coefficient, $\gamma_k$, is modeled as:
 
     $$\gamma_{kc} \sim \mathcal{N}(0, 0.375), \quad \forall k = 1, \dots, 9, c = 1\dots, 6,$$
 
