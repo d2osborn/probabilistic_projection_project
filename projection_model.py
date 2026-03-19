@@ -5,6 +5,7 @@ Predicts the HR outcomes for each player projected to play in a held out set
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import json
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -146,7 +147,7 @@ def posterior_plots(idata, train_df, posterior_samples, hold_out_df, hold_out_di
     predictions_2026 = predictive(jax.random.PRNGKey(seed), **test_inputs)
     Y_pred_samples = np.array(predictions_2026["Y"]) ## predicted HRs per sample
 
-    ## grabs each player's HR samples and their metadata --> use in the streamlit dashboard
+    ## grabs each player's metadata --> use in the streamlit dashboard
     flattened_data = []    
     for i, (_, row) in enumerate(hold_out_df.iterrows()):
         player_sims = Y_pred_samples[:, i]
@@ -160,6 +161,26 @@ def posterior_plots(idata, train_df, posterior_samples, hold_out_df, hold_out_di
                                })
     export_df = pd.DataFrame(flattened_data)
     export_df.to_parquet('data/2026_hr_posterior_samples.parquet')
+
+    ## grabs the posterior means of the params for the dashboard
+    alpha_pos = ["C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"]
+
+    int_ages = np.arange(19, 46)
+    age_df_int = pd.DataFrame({'Age': int_ages})
+    spline_grid_int = np.asarray(patsy.build_design_matrices([design_info], age_df_int)[0])
+    gamma_mean = np.mean(posterior_samples['gamma'], axis=0)
+    age_effects_dict = {}
+    for k, pos in enumerate(alpha_pos):
+        effect_k = gamma_mean[k, :] @ spline_grid_int.T 
+        age_effects_dict[pos] = {str(age): float(eff) for age, eff in zip(int_ages, effect_k)}
+
+    model_params = {"M": float(np.mean(posterior_samples["M"])), 
+                    "beta": np.mean(posterior_samples["beta"], axis=0).tolist(),
+                    "alpha": {pos: float(np.mean(posterior_samples["alpha"][:, i])) for i, pos in enumerate(alpha_pos)},
+                    "age_effects": age_effects_dict
+                    }
+    with open('data/model_params.json', 'w') as f:
+        json.dump(model_params, f)
 
     # the forest plot of each player's posterior predictive interval (95% HDIs)
     sample_preds = Y_pred_samples
@@ -260,7 +281,7 @@ if __name__ == "__main__":
     train_df = panel_data[panel_data['game_year'] < test_year].copy()
     test_df = panel_data[panel_data['game_year'] == test_year].copy()
     ## generates the cubic B-spline matrix for modeling age curve
-    spline_matrix = patsy.dmatrix("0 + bs(Age, df=6, degree=3)", train_df, return_type='dataframe')
+    spline_matrix = patsy.dmatrix("0 + bs(Age, df=6, degree=3, lower_bound=19, upper_bound=45)", train_df, return_type='dataframe')
     train_df['age_splines'] = list(spline_matrix.values)
     test_spline = patsy.build_design_matrices([spline_matrix.design_info], test_df)[0]
     test_df['age_splines'] = list(np.asarray(test_spline))
