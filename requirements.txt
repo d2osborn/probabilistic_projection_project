@@ -1,0 +1,15 @@
+streamlit
+pandas
+numpy
+joblib
+matplotlib
+seaborn
+scipy
+torch
+lightgbm
+scikit-learn
+plotly
+numpyro
+arviz
+pymc
+jax
