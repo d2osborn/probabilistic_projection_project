@@ -147,17 +147,20 @@ if page == "Player Projections":
                               )
             
             st.plotly_chart(fig, use_container_width=True)
-            st.markdown("### Player Insights")
+            st.markdown("### Player Results")
             cols = st.columns(len(selected_players))
             for i, player in enumerate(selected_players):
                 with cols[i]:
                     p_data = df[df['name'] == player].iloc[0]
                     st.info(f"**{p_data['name']}** (Age: {p_data['age']} | {p_data['position']} - {p_data['team']})")
                     spread = p_data['hdi_upper'] - p_data['hdi_lower']
-                    st.metric("Expected HRs (Mean)", f"{p_data['mean_hr']}")
-                    st.write(f"**95% Interval:** {p_data['hdi_lower']} to {p_data['hdi_upper']} HRs")
-                    st.write(f"**Projected PAs:** {p_data['projected_pa']}")
-                    st.caption(f"HDI Spread: {spread} HRs.")
+                    m1, m2, m3 = st.columns(3)
+                    with m1:
+                        st.metric("Projected HRs", f"{p_data['mean_hr']}")
+                    with m2:
+                        st.metric("95% HR HDI", f"{p_data['hdi_lower']}-{p_data['hdi_upper']}")
+                    with m3:
+                        st.metric("95% HR Uncertainty", f"{spread}")
 
 # SANDBOX PLAYER MODE
 elif page == "Sandbox Projections":
