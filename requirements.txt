@@ -13,3 +13,4 @@ numpyro
 arviz
 pymc
 jax
+pyarrow
