@@ -323,27 +323,29 @@ elif page == "Team HR Leaderboard":
 elif page == "Methodology":
     st.title("Methodology")
     st.markdown(r"""
-    Rather than modeling observed HR counts directly, the first step in our framework was to construct an xHR total for each player-season as the basis of our projection model. Observed HR counts are subject to a variety of confounding factors that are outside of a hitter's control (e.g., ballpark dimensions, weather, batted ball luck), making them a noisy signal of true talent. By instead grounding our outcome variable in the underlying physics of contact quality (exit velocity and launch angle), xHR reflects what a batted ball *should* have produced in expectation, independent of any context that the hitter cannot influence.[^1] 
+    ### xHR Estimation
+    Rather than modeling observed HR counts directly, the first step in our framework was to construct an xHR total for each player-season as the basis of our projection model and what we model the true talent of. Observed HR counts are subject to a variety of confounding factors that are outside of a hitter's control (e.g., ballpark dimensions, weather, batted ball luck), making them a noisy signal of true talent. By grounding our outcome variable in the physics of contact quality (i.e., exit velocity and launch angle), xHR reflects what a batted ball *should* have produced in expectation, independent of any context that the hitter cannot influence.[^1] 
 
-    To estimate xHR, we model the probability of a batted ball resulting in a HR as a function of exit velocity and launch angle across roughly 900,000 batted ball events from 2018 to 2025. Given the smooth, nonlinear relationship between these features and HR probability, a Gaussian Process (GP) is a natural modeling choice, as the observed data can be modeled in a flexible way without excessive feature-engineering, generating any higher-order transformations (polynomials) of our features to capture potential nonlinearities (Andorra and Göbel, 2024). However, the drawback of GPs is that they are notably computationally expensive, $\mathcal{O}(N^3)$, where $N$ denotes the number of data points,[^2] as the estimation and prediction process for GPs requires the inversion of the kernel matrix (Andorra and Göbel, 2024).
+    To estimate xHR, we model the probability of a batted ball resulting in a HR as a function of exit velocity and launch angle across roughly 900,000 batted ball events from 2018 to 2025. Given the smooth, nonlinear relationship between these features and HR probability, a Gaussian Process (GP) is a natural modeling choice, as the observed data can be modeled in a flexible way by generating any higher-order transformations (polynomials) of our features to capture potential nonlinearities (Andorra and Göbel, 2024). However, GPs are notably bottlenecked by its computational expense, $\mathcal{O}(N^3)$, where $N$ denotes the number of data points.[^2]
 
-    We instead opt into a *Hilbert Space* Gaussian Process (HSGP), which reduces this computational cost substantially, $\mathcal{O}(mN + m)$[^3], by projecting the GP onto a set of basis functions (Orduz, 2024). Given that HSGPs are restricted to stationary covariance kernels, we selected the Matérn 5/2 kernel as our covariance function (Engels and Andorra, 2024)[^4]. We combine the HSGP model with Stochastic Variational Inference (SVI) for posterior estimation (Orduz, 2025). This approach yields approximate rather than exact posterior estimates, a tradeoff we accept in favor of scalability.
+    We pivot to model xHR with a *Hilbert Space* Gaussian Process (HSGP) instead. HSGPs work quite well in our case because they reduce the computational cost of GPs cost substantially, $\mathcal{O}(mN)$[^3], by projecting the GP onto a set of basis functions (Orduz, 2024). This allows the model to scale linearly with the number of observations, making it feasible for the large number of data points we have. We model our HSGP with the Matérn 5/2 kernel as our covariance function[^4] (Engels and Andorra, 2024). We chose to combine the HSGP model with Stochastic Variational Inference (SVI) for posterior estimation rather than MCMC, thereby yielding *approximate* rather than *exact* posterior estimates (Orduz, 2025), a tradeoff we accept in favor of scalability. Model implementation, results, and figures can be seen in Appendix A.
 
+    ### Bayesian Hierarchical Framework
     Our outcome of interest for a given player $i$ in a given season $j$ is their HR total $Y_{ij}$, which we model as a binomial process, however, with a few distinctions from Jensen's framework (Jensen et al., 2009). We model $Y_{ij}$ as:
 
-    $Y_{ij} \sim \text{Binomial}(N_{ij}, \theta_{ij}\times (\frac{BF_{ij} + 1.00}{2})),$
+    $$Y_{ij} \sim \text{Binomial}\biggl(N_{ij}, \theta_{ij}\times \biggl(\frac{BF_{ij} + 1.00}{2}\biggr)\biggr),$$
 
-    where $\theta_{ij}$ is a player- and season-specific *expected* home run rate, $N_{ij}$ are the number of batted balls player $i$ had in season $j$, and $(BF_{ij} + 1.00) / 2$ is the adjusted ballpark factor for player $i$'s team in season $j$. Since players only play roughly half their games in their home stadium, we average each team's ballpark factor with 1.00—the league-neutral baseline—to yield the adjusted factor of BF that appropriately reduces the park effect for a full season. Because xHRs were modeled purely on batted balls, we must also condition on batted balls in the binomial process. The iid assumption of the binomial model was also justified in Jensen's paper (Jensen et al., 2009). Let $\theta_{ij}\times \biggl(\frac{BF_{ij} + 1.00}{2}\biggr)$ be denoted as $\tilde{\theta}_{ij}$ for notation purposes.
+    where $\theta_{ij}$ is a player- and season-specific *expected* home run rate, $N_{ij}$ are the number of batted balls player $i$ had in season $j$, and $(BF_{ij} + 1.00) / 2$ is the adjusted ball park factor for player $i$'s team in season $j$. Since players only play roughly half their games in their home stadium, we average each team's ballpark factor with $1.00$—the league-neutral baseline—to yield the adjusted factor of BF that appropriately reduces the park effect for a full season. Because xHRs were modeled *solely* on batted ball events, we must condition on batted ball events in the binomial process as well. The iid assumption of the binomial model was justified in Jensen's paper (Jensen et al., 2009). Let $\theta_{ij}\times \biggl(\frac{BF_{ij} + 1.00}{2}\biggr)$ be denoted as $\tilde{\theta}_{ij}$ for notation purposes.
 
     We model $\theta_{ij}$ as a function of age $A_{ij}$, position $k = K_{ij}$, and the player's historical performance in the three seasons preceding season $j$ for a given player $i$:
 
     $$\theta_{ij} = \text{logit}^{-1}\biggl(\text{logit}\biggl(\sum_{\ell = 1}^3 \beta_{\ell}\hat{p}_{i, j-\ell}\biggr) + f_k(A_{ij})\biggr),$$
 
-    where $\ell\in\{1, 2, 3\}$ indexes lagged seasons relative to season $j$. $\hat{p}_{i, j-\ell}$ represents the empirical partial pooling estimator that shrinks each player's observed xHR rate toward the positional mean $\alpha_k$ for season $j-\ell$, where the degree of shrinkage is governed by $M$. $\hat{p}_{i, j-\ell}$ is modeled explicitly as:
+    where $\ell\in\{1, 2, 3\}$ indexes lagged seasons relative to season $j$. $\hat{p}_{i, j-\ell}$ represents the empirical partial pooling estimator that shrinks each player's observed xHR rate toward the positional mean $\alpha_k$ for season $j-\ell$, where the degree of shrinkage is governed by the parameter $M$. $\hat{p}_{i, j-\ell}$ is modeled explicitly as:
 
     $$\hat{p}_{i, j-\ell} = \frac{(xY_{i, j-\ell}\times N_{i, j-\ell)} + (\alpha_k\times M)}{N_{i, j-\ell} + M}.$$
 
-    $M$ is our shrinkage parameter controlling the rate at which a player's observed xHR rate is trusted over the positional prior (i.e., regression to the mean[^5]). Following the split-half reliability method of (Staude, 2013), we yielded $M = 75$ BIPs to be the point at which the correlation between first- and second-half xHR rates first exceeded $r=0.50$. We model $M$ as a random variable rather than a fixed constant to acknowledge uncertainty in the stabilization point itself, as the split-half method yields an empirical estimate rather than a known truth. We use $M=75$ as an informed center, such that:
+    $M$ is our shrinkage parameter that effectively controls the rate at which a player's observed xHR rate is trusted over the positional prior (i.e., regression to the mean[^5]). Following the split-half reliability method of (Staude, 2013), we yielded $M = 75$ BIPs to be the point at which the correlation between first- and second-half xHR rates first exceeded $r=0.50$. We model $M$ as a stochastic parameter rather than a fixed one to acknowledge uncertainty in the stabilization point itself, as the split-half method yields an empirical estimate rather than a known truth. We use $M=75$ as an informed center, such that:
 
     $$M \sim \text{LogNormal}(\ln 75, 0.25).$$
 
@@ -353,33 +355,41 @@ elif page == "Methodology":
 
     $$\alpha_k = \text{logit}^{-1}(z_k),\quad z_k \sim \mathcal{N}(\mu, \sigma),\quad \mu \sim \mathcal{N}(-3, 0.75), \quad \sigma \sim \text{HalfNormal}(0.5).$$
 
-    Rather than estimating a separate, independent baseline for each position, the hierarchical structure partially shares information across positions, meaning positions with limited data[^6] are shrunk towards the global mean, $\mu$, while positions with more data are allowed to deviate more freely. The prior on $\mu$ is centered at $-3$ on the log-odds scale, which is roughly consistent with the empirical league-wide xHR rate observed in our dataset.
+    Rather than estimating a separate, independent baseline for each position, the hierarchical structure partially shares information across positions, meaning positions with limited data[^6] are shrunk towards the global mean, $\mu$, while positions with more data are allowed to deviate more freely. The prior on $\mu$ is centered at $-3$ on the log-odds scale, which is roughly consistent with the empirical league-wide xHR rate observed in our dataset. 
 
     Referring back to the $\theta_{ij}$ equation, the weights $\beta_\ell = (\beta_1, \beta_2, \beta_3)$ govern the relative contribution of each lagged season, and are modeled as:
 
     $$\beta \sim \text{Dirichlet}(1, 3, 6).$$
 
-    The Dirichlet prior places the most weight on the most recent season with the concentration parameters of (1, 3, 6), implying that season $j-1$ *should* carry approximately 60% of the total weight on average.[^7] 
+    The Dirichlet prior places the most weight on the most recent season with the concentration parameters of (1, 3, 6), implying that season $j-1$ *should* carry approximately $60\%$ of the total weight on average.[^7] 
 
-    And we continue with Jensen's implementation by using a cubic B-spline to model $f_k(A_{ij})$ (Jensen, 2009). This allows $A_{ij}$ to be modeled flexibly for each position $k$. We make ours a little more flexible by using six B-spline basis functions per position, totaling 54 parameters (versus Jensen's 36), where each B-spline coefficient, $\gamma_k$, is modeled as:
+    And we continue with Jensen's implementation by using a cubic B-spline to model $f_k(A_{ij})$ (Jensen et al., 2009). This allows $A_{ij}$ to be modeled flexibly for each position $k$. We make ours a little more flexible by using six B-spline basis functions per position, totaling $54$ parameters (versus Jensen's $36$), where each B-spline coefficient, $\gamma_k$, is modeled as:
 
     $$\gamma_{kc} \sim \mathcal{N}(0, 0.375), \quad \forall k = 1, \dots, 9, c = 1\dots, 6,$$
 
     where $c=1,\dots,6$ indexes the B-spline basis functions for the age trajectory of position $k$.
 
-    Combining these prior specifications together gives us the full posterior distribution of our unknown parameters:
+    We specify informative priors throughout the framework to encode a degree of inductive bias into the model, centering hyperparameters on intuitive baselines for player-level HR production. We did so to ensure that the resulting projections remain grounded in the physical realities of the sport. The joint posterior distribution of our unknown parameters, incorporating the prior specifications from the equations above, is defined as:
 
-    $$p(\boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma}, M, \mu, \sigma \mid \mathbf{X}) \propto \prod_{i, j} p(Y_{i, j} \mid N_{i, j}, \tilde{\theta}_{i, j})\cdot p(\theta_{ij} \mid K_{ij}, A_{ij}, \boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma}, M) \cdot p(\boldsymbol{\alpha} \mid \mu, \sigma)\cdot p(\boldsymbol{\beta})\cdot p(\boldsymbol{\gamma})\cdot p(M)\cdot p(\mu)\cdot p(\sigma),$$ 
+    $$
+    \begin{aligned}
+    p(\boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma}, M, \mu, \sigma \mid \mathbf{X}) \propto \prod_{i, j} 
+    &p(Y_{i, j} \mid N_{i, j}, \tilde{\theta}_{i, j})\cdot p(\theta_{ij} \mid K_{ij}, A_{ij}, \boldsymbol{\alpha}, \boldsymbol{\beta}, \boldsymbol{\gamma}, M) \\
+    &\cdot p(\boldsymbol{\alpha} \mid \mu, \sigma)\cdot p(\boldsymbol{\beta})\cdot p(\boldsymbol{\gamma})\cdot p(M)\cdot p(\mu)\cdot p(\sigma),
+    \end{aligned}
+    $$
     
-    where $\mathbf{X}$ contains the observed data $Y$ and covariates ($\mathbf{A}, \mathbf{BF}, \mathbf{K}, \mathbf{N}$) (Jensen, 2009). We estimate the posterior distribution with MCMC, specifically NumPyro's No U-Turn Sampler (NUTS) implementation (NumPyro, 2019). We ran NUTS with four chains of $3000$ samples each, discarding $1000$ warmup samples, yielding $8000$ total posterior draws. Convergence was assessed via the  Gelman-Rubin statistic $\hat{R}$, with all parameters achieving $\hat{R} < 1.01$, and effective sample sizes (ESS) were sufficient across all parameters (PyMC, 2014).
+    where $\mathbf{X}$ contains the observed data $\mathbf{Y}$ and covariates ($\mathbf{A}, \mathbf{BF}, \mathbf{K}, \mathbf{N}$) (Jensen et al., 2009). We estimate the posterior distribution with MCMC, specifically NumPyro's No U-Turn Sampler (NUTS) implementation (NumPyro, 2019). 
+
+    We ran NUTS with four chains of $3000$ samples each, discarding $1000$ warmup samples, yielding $8000$ total posterior draws. Convergence was assessed via the Gelman-Rubin statistic $\hat{R}$, with all parameters achieving $\hat{R} < 1.01$, and effective sample sizes (ESS) were sufficient across all parameters (PyMC, 2014).
     
     If you're interested in the code, feel free to check it out [here](https://github.com/d2osborn/probabilistic_projection_project)!
 
-    [^1]: E.g., a ball struck at 105 mph with a 20° launch angle to straightaway centerfield carries a much lower HR probability than an identically-struck ball pulled toward the foul line. This distinction, however, is driven entirely by context and not the quality of the contact.
-    [^2]: This is infeasible for us, given our design matrix is of dimensions 900,000 x 2.
+    [^1]: E.g., a ball struck at 105 mph with a 20° launch angle to straightaway centerfield carries a much lower HR probability than identically-struck ball pulled toward the foul line. This distinction, however, which was driven entirely by context and not the quality of the contact.
+    [^2]: The estimation and prediction process for GPs requires the inversion of the kernel matrix (Andorra and Göbel, 2024).
     [^3]: Where $m$ is the number of basis functions used in the approximation.
     [^4]: We evaluated both the squared exponential and Matérn 5/2 kernel functions, selecting the latter on the basis of a higher out-of-sample Expected Log Pointwise Predictive Density (ELPD) score.
-    [^5]: $\hat{p}_{i, j-\ell}$ is a rearrangement of the general equation for estimating the group level mean in a partially pooled model, where our $M$ denotes the ratio of variances in the equation $\frac{\sigma_y^2}{\sigma_\alpha^2}$ (Kumar, 2024). The idea of the rearrangement stems from David Robinson's empirical Bayes in baseball blogs (Robinson, 2015).
+    [^5]: $\hat{p}_{i, j-\ell}$ is a rearrangement of the general equation for estimating the group level mean in a partially pooled model, where $M$ represents the ratio of variances in the equation $\frac{\sigma_y^2}{\sigma_\alpha^2}$ (Kumar, 2024).
     [^6]: i.e., DHs.
     [^7]: This reflects the intuition that recent performance is the strongest predictor of future outcomes, with older seasons contributing progressively less.
     
@@ -392,7 +402,6 @@ elif page == "Methodology":
     * Juan Orduz. A conceptual and practical introduction to hilbert space gps approximation methods, 2024. URL https://juanitorduz.github.io/hsgp_intro/.
     * Juan Orduz. Pydata berlin 2025: Introduction to stochastic variational inference with numpyro, 2025. URL https://juanitorduz.github.io/intro_svi/.
     * PyMC. Model checking and diagnostics, 2014. URL https://pymcmc.readthedocs.io/en/latest/modelchecking.html#formal-methods.
-    * David Robinson. Understanding empirical bayes estimation (using baseball statistics), 2015. URL http://varianceexplained.org/r/empirical_bayes_baseball/.
     * Steve Staude. Randomness, stabilization, and regression, 2013. URL https://blogs.fangraphs.com/randomness-stabilization-regression/.
     """)
 
